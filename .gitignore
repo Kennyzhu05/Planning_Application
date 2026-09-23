@@ -67,3 +67,17 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+
+# CMake / Qt Build output directories
+build/
+build-*/
+CMakeLists.txt.user*
+
+# Database & runtime storage
+*.db
+*.sqlite
+
+# IDE artifacts
+.vscode/
+.idea/
