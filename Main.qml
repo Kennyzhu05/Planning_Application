@@ -20,7 +20,9 @@ Window {
         anchors.margins: 20
         spacing: 20
 
-        // Header Section
+        // =========================================================
+        // 1. HEADER SECTION
+        // =========================================================
         RowLayout {
             Layout.fillWidth: true
 
@@ -41,11 +43,11 @@ Window {
 
             Item { Layout.fillWidth: true }
 
-            // Target Hours Chip
+            // Target Hours Chip (Clickable to edit daily goal)
             Rectangle {
-                implicitWidth: 84
+                implicitWidth: 92
                 implicitHeight: 36
-                color: "#18181B"
+                color: targetArea.containsPress ? "#27272A" : "#18181B"
                 radius: 18
                 border.color: "#27272A"
                 border.width: 1
@@ -57,10 +59,18 @@ Window {
                     font.pixelSize: 12
                     font.bold: true
                 }
+
+                MouseArea {
+                    id: targetArea
+                    anchors.fill: parent
+                    onClicked: targetModal.visible = true
+                }
             }
         }
 
-        // Capacity Progress Card
+        // =========================================================
+        // 2. CAPACITY PROGRESS CARD
+        // =========================================================
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 84
@@ -94,7 +104,7 @@ Window {
                     }
                 }
 
-                // Progress Track
+                // Dynamic Progress Bar
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: 8
@@ -114,114 +124,157 @@ Window {
             }
         }
 
-        // Task List
-        ListView {
-            id: listView
+        // =========================================================
+        // 3. TASK LIST VIEW & EMPTY STATE
+        // =========================================================
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            spacing: 10
-            model: taskManager
 
-            delegate: SwipeDelegate {
-                id: delegate
-                width: listView.width
-                implicitHeight: 68
+            // Empty State Graphic when zero tasks exist
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 12
+                visible: listView.count === 0
 
-                background: Rectangle {
-                    color: "#18181B"
-                    radius: 14
-                    border.color: "#27272A"
-                    border.width: 1
+                Text {
+                    text: "☕"
+                    font.pixelSize: 42
+                    Layout.alignment: Qt.AlignHCenter
                 }
 
-                contentItem: RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 16
-                    spacing: 14
-
-                    // Checkbox
-                    Rectangle {
-                        implicitWidth: 24
-                        implicitHeight: 24
-                        radius: 7
-                        color: model.isCompleted ? "#10B981" : "transparent"
-                        border.color: model.isCompleted ? "#10B981" : "#52525B"
-                        border.width: 2
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "✓"
-                            color: "#FFFFFF"
-                            font.pixelSize: 14
-                            font.bold: true
-                            visible: model.isCompleted
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: taskManager.toggleTask(model.index)
-                        }
-                    }
-
-                    // Task Info
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Text {
-                            text: model.name
-                            color: model.isCompleted ? "#71717A" : "#FFFFFF"
-                            font.pixelSize: 15
-                            font.bold: true
-                            font.strikeout: model.isCompleted
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-
-                        Text {
-                            text: model.minutes + " mins • " + model.category
-                            color: "#A1A1AA"
-                            font.pixelSize: 12
-                        }
-                    }
-
-                    // Category Pill
-                    Rectangle {
-                        implicitWidth: 10
-                        implicitHeight: 10
-                        radius: 5
-                        color: model.category === "Work" ? "#6366F1" :
-                               (model.category === "Health" ? "#10B981" : "#F59E0B")
-                    }
+                Text {
+                    text: "No tasks planned yet"
+                    color: "#FFFFFF"
+                    font.pixelSize: 16
+                    font.bold: true
+                    Layout.alignment: Qt.AlignHCenter
                 }
 
-                // Swipe-to-Delete Action
-                swipe.right: Rectangle {
-                    width: parent.width
-                    height: parent.height
-                    color: "#EF4444"
-                    radius: 14
+                Text {
+                    text: "Tap '+ Add New Task' below to build your schedule."
+                    color: "#71717A"
+                    font.pixelSize: 12
+                    Layout.alignment: Qt.AlignHCenter
+                }
+            }
 
-                    Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 20
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Delete"
-                        color: "#FFFFFF"
-                        font.bold: true
+            ListView {
+                id: listView
+                anchors.fill: parent
+                clip: true
+                spacing: 10
+                model: taskManager
+
+                delegate: SwipeDelegate {
+                    id: delegate
+                    width: listView.width
+                    implicitHeight: 68
+
+                    background: Rectangle {
+                        color: "#18181B"
+                        radius: 14
+                        border.color: "#27272A"
+                        border.width: 1
                     }
 
-                    MouseArea {
+                    contentItem: RowLayout {
                         anchors.fill: parent
-                        onClicked: taskManager.deleteTask(model.index)
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 16
+                        spacing: 14
+
+                        // Checkbox Toggle
+                        Rectangle {
+                            implicitWidth: 24
+                            implicitHeight: 24
+                            radius: 7
+                            color: model.isCompleted ? "#10B981" : "transparent"
+                            border.color: model.isCompleted ? "#10B981" : "#52525B"
+                            border.width: 2
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "✓"
+                                color: "#FFFFFF"
+                                font.pixelSize: 14
+                                font.bold: true
+                                visible: model.isCompleted
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: taskManager.toggleTask(model.index)
+                            }
+                        }
+
+                        // Task Details
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            Text {
+                                text: model.name
+                                color: model.isCompleted ? "#71717A" : "#FFFFFF"
+                                font.pixelSize: 15
+                                font.bold: true
+                                font.strikeout: model.isCompleted
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                text: model.minutes + " mins • " + model.category
+                                color: "#A1A1AA"
+                                font.pixelSize: 12
+                            }
+                        }
+
+                        // Category Tag Indicator
+                        Rectangle {
+                            implicitWidth: 10
+                            implicitHeight: 10
+                            radius: 5
+                            color: model.category === "Work" ? "#6366F1" :
+                                   (model.category === "Health" ? "#10B981" : "#F59E0B")
+                        }
+                    }
+
+                    // Swipe-to-Delete Action Layer
+                    swipe.right: Rectangle {
+                        width: parent.width
+                        height: parent.height
+                        color: "#EF4444"
+                        radius: 14
+
+                        Item {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 20
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 60
+                            height: parent.height
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Delete"
+                                color: "#FFFFFF"
+                                font.bold: true
+                                font.pixelSize: 13
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: taskManager.deleteTask(model.index)
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Add Task Floating Trigger
+        // =========================================================
+        // 4. FLOATING ACTION TRIGGER
+        // =========================================================
         Button {
             Layout.fillWidth: true
             implicitHeight: 52
@@ -245,8 +298,26 @@ Window {
         }
     }
 
-    // Modal Sheet
+    // Modal dialog for creating new tasks
     TaskModal {
         id: taskModal
+    }
+
+    // Onboarding Overlay for setting daily target hours
+    TargetSetupModal {
+        id: targetModal
+        // Keep it hidden initially; let Component.onCompleted decide
+        visible: false
+
+        Component.onCompleted: {
+            // If the database has a default/unset target, or on first run, show the setup overlay
+            // If you want it to pop up EVERY time the application starts up:
+            targetModal.visible = true;
+        }
+
+        onTargetSelected: function(hours) {
+            taskManager.setTargetHours(hours)
+            targetModal.visible = false
+        }
     }
 }

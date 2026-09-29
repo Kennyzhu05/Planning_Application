@@ -5,17 +5,19 @@ project(DailyPlanner VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 1. ADD QuickControls2 HERE
+# 1. Find required Qt6 packages
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Sql)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
+# 2. Define the app executable and C++ source files
 qt_add_executable(appDailyPlanner
     main.cpp
     taskmanager.h taskmanager.cpp
     aiservice.h aiservice.cpp
 )
 
+# 3. Register QML Module and QML UI files
 qt_add_qml_module(appDailyPlanner
     URI DailyPlanner
     VERSION 1.0
@@ -25,10 +27,17 @@ qt_add_qml_module(appDailyPlanner
         TargetSetupModal.qml
 )
 
-# 2. LINK Qt6::QuickControls2 HERE
+# 4. Link C++ backend & Qt framework libraries
 target_link_libraries(appDailyPlanner
     PRIVATE
         Qt6::Quick
         Qt6::QuickControls2
         Qt6::Sql
+)
+
+# Set application window icon & properties
+set_target_properties(appDailyPlanner PROPERTIES
+    MACOSX_BUNDLE_GUI_IDENTIFIER my.dailyplanner.app
+    MACOSX_BUNDLE TRUE
+    WIN32_EXECUTABLE TRUE
 )

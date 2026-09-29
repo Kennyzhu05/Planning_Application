@@ -15,18 +15,28 @@ void TaskManager::initDatabase() {
     m_db.setDatabaseName("planner.db");
 
     if (!m_db.open()) {
-        qWarning() << "Database Error:" << m_db.lastError().text();
+        qDebug() << "Error opening database:" << m_db.lastError().text();
         return;
     }
 
     QSqlQuery query;
+    // Create settings table for app configuration like target_hours
+    query.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
     query.exec("CREATE TABLE IF NOT EXISTS tasks ("
                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                "name TEXT, "
                "category TEXT, "
-               "estimatedMinutes INTEGER, "
+               "minutes INTEGER, "
                "description TEXT, "
                "completed INTEGER)");
+
+    // Load saved target hours if present
+    query.exec("SELECT value FROM settings WHERE key = 'targetHours'");
+    if (query.next()) {
+        m_targetHours = query.value(0).toDouble();
+    } else {
+        m_targetHours = 0.0; // Default to 0 so the setup modal triggers on fresh installs
+    }
 }
 
 void TaskManager::loadTasksFromDb() {
@@ -129,8 +139,17 @@ void TaskManager::deleteTask(int index) {
 
 void TaskManager::setTargetHours(double hours) {
     if (qFuzzyCompare(m_targetHours, hours)) return;
+
     m_targetHours = hours;
+
+    // Save to SQLite settings table
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('targetHours', :val)");
+    query.bindValue(":val", QString::number(hours));
+    query.exec();
+
     emit targetHoursChanged();
+    recalculatePlannedHours();
 }
 
 void TaskManager::recalculatePlannedHours() {

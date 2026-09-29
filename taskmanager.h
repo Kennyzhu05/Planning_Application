@@ -56,10 +56,11 @@ public:
     Q_INVOKABLE void addTask(const QString &name, int minutes, const QString &category);
     Q_INVOKABLE void toggleTask(int index);
     Q_INVOKABLE void deleteTask(int index);
+    Q_INVOKABLE void setTargetHours(double hours);
 
     double totalPlannedHours() const { return m_totalPlannedHours; }
     double targetHours() const { return m_targetHours; }
-    void setTargetHours(double hours);
+
 
 signals:
     void totalPlannedHoursChanged();
