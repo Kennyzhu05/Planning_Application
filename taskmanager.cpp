@@ -43,7 +43,7 @@ void TaskManager::loadTasksFromDb() {
     beginResetModel();
     m_tasks.clear();
 
-    QSqlQuery query("SELECT id, name, category, estimatedMinutes, description, completed FROM tasks");
+    QSqlQuery query("SELECT id, name, category, minutes, description, completed FROM tasks");
     while (query.next()) {
         m_tasks.append(Task(
             query.value(0).toInt(),      // id
@@ -88,8 +88,8 @@ void TaskManager::addTask(const QString &name, int minutes, const QString &categ
     if (cleanName.isEmpty()) return;
 
     QSqlQuery query;
-    query.prepare("INSERT INTO tasks (name, category, estimatedMinutes, description, completed) "
-                  "VALUES (:name, :category, :minutes, :description, 0)");
+    query.prepare("INSERT INTO tasks (name, category, minutes, description, completed) "
+              "VALUES (:name, :category, :minutes, :description, 0)");
     query.bindValue(":name", cleanName);
     query.bindValue(":category", category);
     query.bindValue(":minutes", minutes);
