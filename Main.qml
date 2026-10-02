@@ -418,43 +418,113 @@ Window {
                 onGoalRequested: function(goalId) { goalDetails.openForGoal(goalId) }
             }
 
-            ColumnLayout {
+            ScrollView {
+                id: menuScroll
                 anchors.fill: parent
-                spacing: 20
                 visible: window.currentPage === 3
+                clip: true
+                contentWidth: availableWidth
 
-                Text {
-                    text: "Menu"
-                    color: "#FFFFFF"
-                    font.pixelSize: 24
-                    font.bold: true
-                }
+                ColumnLayout {
+                    width: menuScroll.availableWidth
+                    spacing: 20
 
-                Button {
-                    id: menuTargetButton
-                    Layout.fillWidth: true
-                    implicitHeight: 80
-                    padding: 16
-                    Accessible.name: "Edit daily focus target"
-                    onClicked: targetModal.openForTarget(taskManager.targetHours)
-                    background: Rectangle {
-                        color: menuTargetButton.down ? "#27272A" : "#18181B"
-                        radius: 16
-                        border.color: menuTargetButton.activeFocus ? "#818CF8" : "#27272A"
+                    Text {
+                        text: "Menu"
+                        color: "#FFFFFF"
+                        font.pixelSize: 24
+                        font.bold: true
                     }
-                    contentItem: RowLayout {
-                        spacing: 12
-                        NavigationIcon { iconName: "goal"; tint: "#818CF8" }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-                            Text { text: "Daily focus target"; color: "#FFFFFF"; font.pixelSize: 15; font.bold: true }
-                            Text { text: taskManager.targetHours.toFixed(1) + " hours per day"; color: "#A1A1AA"; font.pixelSize: 12 }
+
+                    Button {
+                        id: menuTargetButton
+                        Layout.fillWidth: true
+                        implicitHeight: 80
+                        padding: 16
+                        Accessible.name: "Edit daily focus target"
+                        onClicked: targetModal.openForTarget(taskManager.targetHours)
+                        background: Rectangle {
+                            color: menuTargetButton.down ? "#27272A" : "#18181B"
+                            radius: 16
+                            border.color: menuTargetButton.activeFocus ? "#818CF8" : "#27272A"
                         }
-                        NavigationIcon { iconName: "edit"; tint: "#818CF8" }
+                        contentItem: RowLayout {
+                            spacing: 12
+                            NavigationIcon { iconName: "goal"; tint: "#818CF8" }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+                                Text { text: "Daily focus target"; color: "#FFFFFF"; font.pixelSize: 15; font.bold: true }
+                                Text { text: taskManager.targetHours.toFixed(1) + " hours per day"; color: "#A1A1AA"; font.pixelSize: 12 }
+                            }
+                            NavigationIcon { iconName: "edit"; tint: "#818CF8" }
+                        }
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: accountContent.implicitHeight + 32
+                        radius: 16
+                        color: "#18181B"
+                        border.color: "#27272A"
+                        ColumnLayout {
+                            id: accountContent
+                            anchors.fill: parent
+                            anchors.margins: 16
+                            spacing: 10
+                            Text { text: "AI account"; color: "#FFFFFF"; font.pixelSize: 15; font.bold: true }
+                            Text {
+                                Layout.fillWidth: true
+                                text: authService.signedIn ? authService.email : "Sign in to use AI breakdown."
+                                textFormat: Text.PlainText
+                                color: "#A1A1AA"
+                                wrapMode: Text.WrapAnywhere
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Your tasks and goals stay on this device."
+                                color: "#71717A"
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: authService.signedIn
+                                text: authService.storageMessage
+                                textFormat: Text.PlainText
+                                color: "#71717A"
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: authService.errorMessage.length > 0
+                                text: authService.errorMessage
+                                textFormat: Text.PlainText
+                                color: "#FCA5A5"
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: authService.message.length > 0
+                                text: authService.message
+                                textFormat: Text.PlainText
+                                color: "#A7F3D0"
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: 12
+                            }
+                            AppButton {
+                                Layout.fillWidth: true
+                                text: authService.signedIn ? "Sign out" : authService.busy ? "Connecting…" : "Sign in / Create account"
+                                enabled: !authService.busy
+                                onClicked: {
+                                    if (authService.signedIn) authService.signOut()
+                                    else authModal.openForSignIn()
+                                }
+                            }
+                        }
                     }
                 }
-                Item { Layout.fillHeight: true }
             }
         }
 
@@ -532,6 +602,12 @@ Window {
     }
 
     TaskEditModal { id: taskEdit }
+
+    AuthModal { id: authModal }
+    Connections {
+        target: aiService
+        function onAuthenticationRequired() { authModal.openForSignIn() }
+    }
 
     GoalDetailsModal {
         id: goalDetails

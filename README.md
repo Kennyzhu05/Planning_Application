@@ -24,7 +24,7 @@ A modern, high-performance C++20 and Qt Quick (QML) daily planning desktop and m
 ## Quick Start
 
 ### Prerequisites
-* Qt 6.5+ with Quick, QuickControls2, and Sql components installed.
+* Qt 6.5+ with Quick, QuickControls2, Sql, and Network components installed.
 * CMake 3.16 or higher.
 * C++17 or C++20 compatible compiler (MSVC 2019+, GCC 11+, or Clang 12+).
 
@@ -57,17 +57,21 @@ git commit -m "[Name of your commit]"
 git push
 ```
 
-## AI task breakdown (private desktop prototype)
+## AI breakdown and account sign-in
 
 Open a task to view its details and nested subtasks. Click **Break down the task**, edit the suggested titles and durations, then **Save subtasks**. Completing all subtasks completes their parent. The focus budget counts today's scheduled tasks and uses the subtask total instead of double-counting the parent estimate. AI estimates may exceed your original estimate; the preview flags the difference before saving.
 
-The service uses Groq's `openai/gpt-oss-20b` model and strict JSON-schema output. Set `GROQ_API_KEY` in Qt Creator under **Projects > Run Settings > Environment** for the application's desktop run configuration, then restart the app. Enter the key privately; never put it in QML, source code, or Git. The key is read only by the C++ network service.
+Open **Menu > Sign in / Create account** to use AI breakdown. The Qt app signs in with Supabase Auth, including email-code verification and password recovery. On Windows, refresh credentials are stored in Credential Manager; passwords are never saved. Other platforms currently keep sessions in memory until the app closes. Local planning works while signed out.
+
+The TypeScript backend in `backend/` runs on Cloudflare Workers and uses Groq's `openai/gpt-oss-20b` model with strict JSON-schema output. `GROQ_API_KEY` now belongs exclusively in a Cloudflare Worker secret. Remove the old key from the Qt run environment: there is no direct-provider fallback. Only the selected context is transmitted for a breakdown; planner data stays in local SQLite.
+
+Configure `DAILYPLANNER_API_URL`, `DAILYPLANNER_SUPABASE_URL` and `DAILYPLANNER_SUPABASE_PUBLISHABLE_KEY` in Qt Creator's run environment, or embed those public values in CMake settings for a shared build. The full guide covers custom SMTP, email templates, JWT signing keys, account access, quotas, local development and deployment: **[backend setup guide](backend/README.md)**. Supabase and Cloudflare setup/deployment have not been performed.
 
 Each request sends the selected task's title, description, category, and original estimate. There is one request at a time, a 45-second timeout, and cancellation when the card closes. Suggestions are saved only after review. Regenerating requires confirmation before replacing saved subtasks and completion progress.
 
 The existing `planner.db` working-directory location is retained. Schema upgrades preserve existing tasks, subtasks, and settings in a transaction. When planned dates are first introduced, existing tasks receive the upgrade day's local date. Unscheduled goal tasks remain unscheduled on later launches. Keep the same run working directory to continue using your existing planner database.
 
-This direct provider connection is for private desktop development. Before distributing the mobile application, put the provider key on an authenticated backend. Timed events, recurring tasks, automatic scheduling, and recursive subtasks are outside this version.
+The backend authenticates requests, validates input/output, enforces per-account limits and shared daily/monthly request caps, and returns readable errors. The trial uses an explicit account allowlist. Sign-in controls AI access; changing accounts does not create a separate local planner or synchronize data. Timed events, recurring tasks, automatic scheduling, and recursive subtasks are outside this version.
 
 ## Calendar and long-term goals
 
@@ -75,7 +79,7 @@ This direct provider connection is for private desktop development. Before distr
 
 Use the round **+** button on **Long-term goal** to create a goal. Add its title, description, success criteria, and optional target date. **More details** includes category, starting point, and weekly availability; zero hours means unspecified. Goal deadlines appear on Calendar but do not consume the daily Focus Budget.
 
-Open a goal and choose **Break down this goal**. Groq suggests 1–8 ordered milestone titles and 1–12 actionable tasks for the first milestone, each estimated at 1–120 minutes. Review the milestone titles and task titles, guidance, and durations; remove tasks or assign dates before saving. Undated tasks stay in the goal backlog. Scheduled goal tasks appear on Calendar and on Dashboard when scheduled for today. Open a saved goal task to edit its date or use the regular AI subtask breakdown.
+Open a goal and choose **Break down this goal**. AI suggests 1–8 ordered milestone titles and 1–12 actionable tasks for the first milestone, each estimated at 1–120 minutes. Review the milestone titles and task titles, guidance, and durations; remove tasks or assign dates before saving. Undated tasks stay in the goal backlog. Scheduled goal tasks appear on Calendar and on Dashboard when scheduled for today. Open a saved goal task to edit its date or use the regular AI subtask breakdown.
 
 **Regenerate goal breakdown** creates a replacement preview. Saving requires confirmation because it replaces that goal's linked tasks, dates, nested subtasks, and completion progress. An unsuccessful save preserves the existing plan. Closing an unsaved preview asks before discarding it; closing during generation cancels the request. Task and goal request identities are distinct, even when their database IDs match.
 
@@ -83,6 +87,6 @@ Goal progress reports completed planned tasks. **Mark goal achieved** is a manua
 
 ### Optional tests
 
-Configure CMake with `-DDAILYPLANNER_BUILD_TESTS=ON`, build, then run `ctest --test-dir build --output-on-failure`. Qt Test must be installed for the selected kit. Tests use isolated databases and a loopback HTTP server. The live Groq smoke test skips when no `GROQ_API_KEY` is configured; with a key it sends three sample tasks and consumes API quota. Ensure the Qt and MinGW runtime DLL directories are on PATH.
+No tests or builds were run for this backend/sign-in change, as requested. The existing optional suite (`DAILYPLANNER_BUILD_TESTS`, off by default) includes direct-Groq API fixtures from the earlier prototype. Those API/UI fixtures need migration to the authenticated backend contract before they can validate the new flow. Do not use the old live-Groq test as backend verification. Manual verification and setup steps are in `backend/README.md`.
 
 See [Groq setup](https://console.groq.com/docs/quickstart) and [structured outputs](https://console.groq.com/docs/structured-outputs).

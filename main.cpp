@@ -6,6 +6,7 @@
 #include "taskmanager.h"
 #include "aiservice.h"
 #include "focuscontroller.h"
+#include "authservice.h"
 
 int main(int argc, char *argv[])
 {
@@ -15,6 +16,7 @@ int main(int argc, char *argv[])
 
     // Context objects must outlive the QML engine.
     TaskManager taskManager;
+    AuthService authService;
     AIService aiService;
     FocusController focusController;
 
@@ -28,6 +30,14 @@ int main(int argc, char *argv[])
 
     engine.rootContext()->setContextProperty(
         "focusController", &focusController);
+    aiService.setAuthService(&authService);
+    // Context objects must outlive the QML engine.
+    QQmlApplicationEngine engine;
+
+    // Register objects into QML context
+    engine.rootContext()->setContextProperty("taskManager", &taskManager);
+    engine.rootContext()->setContextProperty("aiService", &aiService);
+    engine.rootContext()->setContextProperty("authService", &authService);
 
     QObject::connect(
         &engine,

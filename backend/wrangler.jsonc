@@ -1,0 +1,34 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dailyplanner-ai",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-02",
+	"workers_dev": true,
+	"observability": {
+		"enabled": false
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "QUOTA_GATE",
+				"class_name": "QuotaGate"
+			}
+		]
+	},
+	"exports": {
+		"QuotaGate": {
+			"type": "durable-object",
+			"storage": "sqlite"
+		}
+	},
+	"vars": {
+		"SUPABASE_URL": "https://oaqroutckbfdrfclqhff.supabase.co",
+		"ALLOWED_USER_IDS": "57624795-5e2e-45b2-a339-64128a85b810",
+		"AI_ENABLED": "true",
+		"USER_REQUESTS_PER_MINUTE": "3",
+		"USER_REQUESTS_PER_DAY": "30",
+		"GLOBAL_REQUESTS_PER_DAY": "100",
+		"GLOBAL_REQUESTS_PER_MONTH": "1000",
+		"GLOBAL_CONCURRENT_REQUESTS": "2"
+	}
+}

@@ -1,0 +1,11 @@
+# Copy to .dev.vars for LOCAL use only. Never commit the populated file.
+# On Cloudflare, GROQ_API_KEY must be a Worker secret, not a vars entry.
+GROQ_API_KEY=replace_locally
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+ALLOWED_USER_IDS=replace_with_comma_separated_supabase_user_uuids
+AI_ENABLED=true
+USER_REQUESTS_PER_MINUTE=3
+USER_REQUESTS_PER_DAY=30
+GLOBAL_REQUESTS_PER_DAY=100
+GLOBAL_REQUESTS_PER_MONTH=1000
+GLOBAL_CONCURRENT_REQUESTS=2

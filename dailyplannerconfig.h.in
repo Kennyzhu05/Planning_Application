@@ -1,0 +1,5 @@
+#pragma once
+// Public application configuration only. Never put Groq or Supabase admin keys here.
+#define DAILYPLANNER_API_URL "@DAILYPLANNER_API_URL@"
+#define DAILYPLANNER_SUPABASE_URL "@DAILYPLANNER_SUPABASE_URL@"
+#define DAILYPLANNER_SUPABASE_PUBLISHABLE_KEY "@DAILYPLANNER_SUPABASE_PUBLISHABLE_KEY@"

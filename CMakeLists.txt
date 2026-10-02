@@ -6,6 +6,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find required Qt packages.
+# Public defaults can be embedded when distributing a build to friends.
+# The Groq key and all Supabase admin keys belong exclusively on the server.
+set(DAILYPLANNER_API_URL "" CACHE STRING "HTTPS backend /v1/breakdown endpoint")
+set(DAILYPLANNER_SUPABASE_URL "" CACHE STRING "Public Supabase project URL")
+set(DAILYPLANNER_SUPABASE_PUBLISHABLE_KEY "" CACHE STRING "Public sb_publishable_ key")
+if(DAILYPLANNER_SUPABASE_PUBLISHABLE_KEY AND NOT DAILYPLANNER_SUPABASE_PUBLISHABLE_KEY MATCHES "^sb_publishable_[A-Za-z0-9_-]+$")
+    message(FATAL_ERROR "Use a public sb_publishable_ key. Groq and Supabase admin keys must never be compiled into the app.")
+endif()
+configure_file(dailyplannerconfig.h.in dailyplannerconfig.h @ONLY)
+
+# 1. Find required Qt6 packages
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Sql Network)
 
 qt_standard_project_setup(REQUIRES 6.5)
@@ -16,6 +27,7 @@ qt_add_executable(appDailyPlanner
     taskmanager.h taskmanager.cpp
     goaloperations.cpp
     aiservice.h aiservice.cpp
+    authservice.h authservice.cpp
     task.h breakdownvalidation.h
     focusengine.h focusengine.cpp
     focuscontroller.h focuscontroller.cpp
@@ -46,6 +58,7 @@ qt_add_qml_module(appDailyPlanner
         GoalForm.qml
         TaskEditModal.qml
         GoalDetailsModal.qml
+        AuthModal.qml
 )
 
 target_link_libraries(appDailyPlanner
@@ -55,6 +68,10 @@ target_link_libraries(appDailyPlanner
         Qt6::Sql
         Qt6::Network
 )
+target_include_directories(appDailyPlanner PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+if(WIN32)
+    target_link_libraries(appDailyPlanner PRIVATE advapi32)
+endif()
 
 set_target_properties(appDailyPlanner PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.dailyplanner.app
@@ -101,10 +118,12 @@ if(DAILYPLANNER_BUILD_TESTS)
         aiservice.cpp aiservice.h breakdownvalidation.h
         focusengine.cpp focusengine.h
         focuscontroller.cpp focuscontroller.h
+        authservice.cpp authservice.h
     )
 
     target_include_directories(dailyplanner_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_BINARY_DIR}"
     )
 
     target_link_libraries(dailyplanner_tests PRIVATE
@@ -115,6 +134,10 @@ if(DAILYPLANNER_BUILD_TESTS)
         Qt6::Sql
         Qt6::Network
     )
+
+    if(WIN32)
+    target_link_libraries(dailyplanner_tests PRIVATE advapi32)
+endif()
 
     qt_add_qml_module(dailyplanner_tests
         URI DailyPlannerTest
@@ -140,6 +163,7 @@ if(DAILYPLANNER_BUILD_TESTS)
             GoalForm.qml
             TaskEditModal.qml
             GoalDetailsModal.qml
+            AuthModal.qml
     )
 
     add_test(NAME dailyplanner_tests COMMAND dailyplanner_tests)

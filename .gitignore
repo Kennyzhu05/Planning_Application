@@ -88,3 +88,12 @@ CMakeLists.txt.user*
 .vscode/
 .idea/
 .qtcreator/
+
+# Worker dependencies, local secrets and deployment artifacts
+backend/node_modules/
+backend/dist/
+backend/.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+dailyplannerconfig.h
