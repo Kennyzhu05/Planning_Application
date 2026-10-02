@@ -14,6 +14,7 @@ qt_standard_project_setup(REQUIRES 6.5)
 qt_add_executable(appDailyPlanner
     main.cpp
     taskmanager.h taskmanager.cpp
+    goaloperations.cpp
     aiservice.h aiservice.cpp
     task.h breakdownvalidation.h
     focusengine.h focusengine.cpp
@@ -32,6 +33,19 @@ qt_add_qml_module(appDailyPlanner
         TaskDetailsModal.qml
         BottomNavigation.qml
         NavigationIcon.qml
+        DateUtils.js
+        AppButton.qml
+        CalendarWidget.qml
+        DateField.qml
+        TaskListCard.qml
+        CalendarPage.qml
+        GoalListCard.qml
+        GoalsPage.qml
+        PlannerField.qml
+        PlannerArea.qml
+        GoalForm.qml
+        TaskEditModal.qml
+        GoalDetailsModal.qml
 )
 
 target_link_libraries(appDailyPlanner
@@ -78,11 +92,12 @@ option(DAILYPLANNER_BUILD_TESTS
 
 if(DAILYPLANNER_BUILD_TESTS)
     enable_testing()
-    find_package(Qt6 REQUIRED COMPONENTS Test)
+    find_package(Qt6 REQUIRED COMPONENTS Test QuickTest)
 
     qt_add_executable(dailyplanner_tests
         tests/test_dailyplanner.cpp
         taskmanager.cpp taskmanager.h task.h
+        goaloperations.cpp
         aiservice.cpp aiservice.h breakdownvalidation.h
         focusengine.cpp focusengine.h
         focuscontroller.cpp focuscontroller.h
@@ -94,6 +109,7 @@ if(DAILYPLANNER_BUILD_TESTS)
 
     target_link_libraries(dailyplanner_tests PRIVATE
         Qt6::Test
+        Qt6::QuickTest
         Qt6::Quick
         Qt6::QuickControls2
         Qt6::Sql
@@ -111,6 +127,19 @@ if(DAILYPLANNER_BUILD_TESTS)
             TaskDetailsModal.qml
             BottomNavigation.qml
             NavigationIcon.qml
+            DateUtils.js
+            AppButton.qml
+            CalendarWidget.qml
+            DateField.qml
+            TaskListCard.qml
+            CalendarPage.qml
+            GoalListCard.qml
+            GoalsPage.qml
+            PlannerField.qml
+            PlannerArea.qml
+            GoalForm.qml
+            TaskEditModal.qml
+            GoalDetailsModal.qml
     )
 
     add_test(NAME dailyplanner_tests COMMAND dailyplanner_tests)

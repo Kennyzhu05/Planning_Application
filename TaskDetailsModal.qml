@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "DateUtils.js" as Dates
 
 FocusScope {
     id: root
@@ -17,6 +18,8 @@ FocusScope {
     property string errorMessage: ""
     property string confirmation: ""
     property int previewRevision: 0
+    property bool editPopupVisible: false
+    signal editRequested(int taskId)
     readonly property bool generating: aiService.busy && aiService.activeTaskId === selectedTaskId
     readonly property int suggestedMinutes: {
         var revision = previewRevision
@@ -100,7 +103,7 @@ FocusScope {
 
     Shortcut {
         sequence: "Escape"
-        enabled: root.visible
+        enabled: root.visible && !root.editPopupVisible
         context: Qt.WindowShortcut
         onActivated: {
             if (root.confirmation.length) {
@@ -186,6 +189,12 @@ FocusScope {
                     font.bold: true
                 }
                 CardButton {
+                    text: "Edit"
+                    fillColor: "#27272A"
+                    enabled: !root.hasPreview && !aiService.busy
+                    onClicked: root.editRequested(root.selectedTaskId)
+                }
+                CardButton {
                     objectName: "closeDetailsButton"
                     text: "Close"
                     fillColor: "#27272A"
@@ -239,6 +248,22 @@ FocusScope {
                         palette.text: "#D4D4D8"
                         onClicked: taskManager.toggleTaskById(root.selectedTaskId)
                     }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Planned: " + Dates.label(root.task.plannedDate || "", "Unscheduled")
+                        color: "#A1A1AA"
+                        font.pixelSize: 12
+                        wrapMode: Text.Wrap
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        visible: !!root.task.goalName
+                        text: "Goal: " + (root.task.goalName || "")
+                        textFormat: Text.PlainText
+                        color: "#A5B4FC"
+                        font.pixelSize: 12
+                        wrapMode: Text.Wrap
+                    }
                     Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: "#3F3F46" }
                     Text {
                         Layout.fillWidth: true
@@ -262,6 +287,14 @@ FocusScope {
                         text: (root.task.completedSubtaskCount || 0) + " of " + savedModel.count
                               + " completed • " + (root.task.effectiveMinutes || 0) + " min planned"
                         color: "#A5B4FC"
+                        font.pixelSize: 13
+                        wrapMode: Text.Wrap
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.hasPreview && root.suggestedMinutes > (root.task.minutes || 0)
+                        text: "The suggested total exceeds your original estimate. Review the durations before saving."
+                        color: "#FCD34D"
                         font.pixelSize: 13
                         wrapMode: Text.Wrap
                     }

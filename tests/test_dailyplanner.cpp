@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <QtQuickTest/quicktest.h>
 #include <QDir>
 #include <QUuid>
 #include <QTcpServer>
@@ -17,6 +18,7 @@
 #include <QFontDatabase>
 #include <QQmlProperty>
 #include <QWheelEvent>
+#include <QJSValue>
 #include "taskmanager.h"
 #include "aiservice.h"
 #include "focuscontroller.h"
@@ -542,8 +544,9 @@ private slots:
         QVERIFY(QTest::qWaitForWindowExposed(window));
         auto item = [&](const QString &name) { return findItem(window->contentItem(), name); };
         auto click = [&](const QString &name) {
+            if (!QQuickTest::qWaitForPolish(window)) return false;
             auto control = item(name);
-            if (!control || !control->isVisible() || control->width() <= 0 || control->height() <= 0)
+            if (!control || !control->isVisible() || !control->isEnabled() || control->width() <= 0 || control->height() <= 0)
                 return false;
             QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
                 control->mapToScene(QPointF(control->width()/2, control->height()/2)).toPoint());
@@ -645,12 +648,14 @@ private slots:
         QTRY_VERIFY(dialog->property("opened").toBool());
         QVERIFY(click("focusTimedOption"));
         QTRY_VERIFY(item("focusMinutesInput")->isVisible());
+        QVERIFY(QQuickTest::qWaitForPolish(window));
         auto hours = item("focusHoursInput");
         auto minutes = item("focusMinutesInput");
         QVERIFY(hours && minutes);
         QVERIFY(capture("focus-duration-popup"));
         hours->setProperty("currentIndex", 0);
         minutes->setProperty("currentIndex", 0);
+        QTRY_VERIFY(item("focusTimedStart")->isEnabled());
         QVERIFY(click("focusTimedStart"));
         QVERIFY(!focusController.running());
         QVERIFY(dialog->property("visible").toBool());
@@ -682,6 +687,7 @@ private slots:
         hours->setProperty("currentIndex", 0);
         minutes->setProperty("currentIndex", 25);
         QVERIFY(capture("focus-duration-popup"));
+        QTRY_VERIFY(item("focusTimedStart")->isEnabled());
         QVERIFY(click("focusTimedStart"));
         QTRY_VERIFY(focusController.running());
         QVERIFY(focusController.timed());
@@ -699,6 +705,7 @@ private slots:
         hours->setProperty("currentIndex", 24);
         QTRY_COMPARE(minutes->property("currentIndex").toInt(), 0);
         QVERIFY(!minutes->isEnabled());
+        QTRY_VERIFY(item("focusTimedStart")->isEnabled());
         QVERIFY(click("focusTimedStart"));
         QTRY_VERIFY(focusController.running());
         QCOMPARE(focusController.plannedSeconds(), 86400);
@@ -713,6 +720,7 @@ private slots:
         QVERIFY(click("focusTimedOption"));
         hours->setProperty("currentIndex", 0);
         minutes->setProperty("currentIndex", 1);
+        QTRY_VERIFY(item("focusTimedStart")->isEnabled());
         QVERIFY(click("focusTimedStart"));
         QTRY_VERIFY(focusController.running());
         QTRY_VERIFY(!dialog->property("visible").toBool());
@@ -720,6 +728,159 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(focusController.status(), QString("Completed"), 65000);
         QCOMPARE(control->property("text").toString(), QString("Start Focus"));
         QVERIFY(!item("focusStopSquare")->isVisible());
+        QCOMPARE(warnings.count(), 0);
+    }
+
+    void plannerNavigationAndDetails() {
+        TestDirectory directory;
+        QVERIFY(directory.isValid());
+        TaskManager manager(nullptr, directory.filePath("planner-navigation.db"));
+        manager.setTargetHours(8);
+        const QString today = manager.todayDate();
+        const QString tomorrow = QDate::fromString(today, Qt::ISODate).addDays(1).toString(Qt::ISODate);
+        QVERIFY(manager.addTask("Today's task", 30, "Work", "Dashboard task.", today));
+        QVERIFY(manager.addTask("Tomorrow's task", 45, "Personal", "Calendar task.", tomorrow));
+        const int futureTaskId = manager.tasksForDate(tomorrow).first().toMap()["taskId"].toInt();
+        const int goalId = manager.saveGoal({{"name", "Learn watercolor"},
+            {"description", "Finish a small painting."}, {"successCriteria", "One finished scene"},
+            {"targetDate", tomorrow}, {"category", "Personal"}});
+        QVERIFY(goalId > 0);
+        QVERIFY(manager.saveGoalBreakdown(goalId, {QString("Sketch the scene")},
+            {QVariantMap{{"name", "Choose a subject"}, {"description", "Pick a nearby object."},
+                {"minutes", 15}, {"plannedDate", QString()}}}));
+
+        // Saved planner data exercises this flow without provider requests.
+        AIService service(nullptr, QUrl("http://127.0.0.1:1"));
+        QSignalSpy busyChanges(&service, &AIService::busyChanged);
+        FocusController focusController;
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty("taskManager", &manager);
+        engine.rootContext()->setContextProperty("aiService", &service);
+        engine.rootContext()->setContextProperty("focusController", &focusController);
+        QSignalSpy warnings(&engine, &QQmlEngine::warnings);
+        engine.loadFromModule("DailyPlannerTest", "Main");
+        QVERIFY(!engine.rootObjects().isEmpty());
+        auto window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        auto findVisual = [](auto &&self, QQuickItem *root, auto &&matches) -> QQuickItem * {
+            if (matches(root)) return root;
+            for (auto child : root->childItems())
+                if (auto found = self(self, child, matches)) return found;
+            return nullptr;
+        };
+        auto visualType = [&](QQuickItem *root, const char *type) {
+            return findVisual(findVisual, root, [&](QQuickItem *candidate) {
+                return QByteArray(candidate->metaObject()->className()).startsWith(type);
+            });
+        };
+        auto visualProperty = [&](QQuickItem *root, const char *name, const QVariant &value) {
+            return findVisual(findVisual, root, [&](QQuickItem *candidate) {
+                return candidate->property(name) == value;
+            });
+        };
+        auto objectType = [&](const char *type) -> QObject * {
+            for (auto object : window->findChildren<QObject *>())
+                if (QByteArray(object->metaObject()->className()).startsWith(type)) return object;
+            return nullptr;
+        };
+        auto read = [](QObject *object, const char *name) {
+            const QVariant value = object->property(name);
+            return value.metaType() == QMetaType::fromType<QJSValue>()
+                ? value.value<QJSValue>().toVariant() : value;
+        };
+        auto click = [&](QQuickItem *control) {
+            if (!QQuickTest::qWaitForPolish(window)) return false;
+            if (!control || !control->isVisible() || !control->isEnabled()
+                || control->width() <= 0 || control->height() <= 0) return false;
+            QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
+                control->mapToScene(QPointF(control->width()/2, control->height()/2)).toPoint());
+            return true;
+        };
+        auto navigation = visualType(window->contentItem(), "BottomNavigation");
+        auto calendar = visualType(window->contentItem(), "CalendarPage");
+        auto goals = visualType(window->contentItem(), "GoalsPage");
+        auto taskDetails = findItem(window->contentItem(), "taskDetailsModal");
+        auto goalDetails = visualType(window->contentItem(), "GoalDetailsModal");
+        auto taskEditor = objectType("TaskEditModal");
+        auto goalEditor = objectType("GoalForm");
+        QVERIFY(navigation && calendar && goals && taskDetails && goalDetails && taskEditor && goalEditor);
+        auto selectPage = [&](int index) { return click(visualProperty(navigation, "index", index)); };
+
+        QCOMPARE(window->property("currentPage").toInt(), 0);
+        QTRY_COMPARE(findItem(window->contentItem(), "taskList")->property("count").toInt(), 1);
+        QVERIFY(findItem(window->contentItem(), "taskRow1"));
+        QVERIFY(!findItem(window->contentItem(), "taskRow" + QString::number(futureTaskId)));
+        QVERIFY(!calendar->isVisible());
+        QVERIFY(!goals->isVisible());
+
+        // Real tab/day clicks must reveal the future task and goal deadline.
+        QVERIFY(selectPage(1));
+        QTRY_COMPARE(window->property("currentPage").toInt(), 1);
+        QTRY_VERIFY(calendar->isVisible());
+        QVERIFY(!findItem(window->contentItem(), "addTaskButton")->isVisible());
+        QTRY_VERIFY(visualProperty(calendar, "dateKey", tomorrow));
+        QVERIFY(click(visualProperty(calendar, "dateKey", tomorrow)));
+        QTRY_COMPARE(calendar->property("selectedDate").toString(), tomorrow);
+        QTRY_COMPARE(read(calendar, "tasks").toList().size(), 1);
+        QCOMPARE(read(calendar, "tasks").toList().first().toMap()["taskId"].toInt(), futureTaskId);
+        QTRY_COMPARE(read(calendar, "goals").toList().size(), 1);
+        QCOMPARE(read(calendar, "goals").toList().first().toMap()["goalId"].toInt(), goalId);
+        QTRY_VERIFY(visualType(calendar, "TaskListCard"));
+        QVERIFY(click(visualType(calendar, "TaskListCard")));
+        QTRY_VERIFY(taskDetails->isVisible());
+        QCOMPARE(taskDetails->property("selectedTaskId").toInt(), futureTaskId);
+        QVERIFY(!calendar->isEnabled());
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!taskDetails->isVisible());
+        QVERIFY(calendar->isEnabled());
+
+        // First Escape dismisses the task editor; the next dismisses its card.
+        QVERIFY(click(visualType(calendar, "TaskListCard")));
+        QTRY_VERIFY(taskDetails->isVisible());
+        QVERIFY(click(visualProperty(taskDetails, "text", QString("Edit"))));
+        QTRY_VERIFY(taskEditor->property("opened").toBool());
+        QCOMPARE(taskEditor->property("taskId").toInt(), futureTaskId);
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!taskEditor->property("visible").toBool());
+        QVERIFY(taskDetails->isVisible());
+        QCOMPARE(taskDetails->property("selectedTaskId").toInt(), futureTaskId);
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!taskDetails->isVisible());
+
+        // Calendar deadlines and Goals both open the same saved goal.
+        QTRY_VERIFY(visualType(calendar, "GoalListCard"));
+        QVERIFY(click(visualType(calendar, "GoalListCard")));
+        QTRY_VERIFY(goalDetails->isVisible());
+        QCOMPARE(goalDetails->property("selectedGoalId").toInt(), goalId);
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!goalDetails->isVisible());
+        QVERIFY(selectPage(2));
+        QTRY_COMPARE(window->property("currentPage").toInt(), 2);
+        QTRY_VERIFY(goals->isVisible());
+        QVERIFY(!calendar->isVisible());
+        QVERIFY(findItem(window->contentItem(), "addTaskButton")->isVisible());
+        QTRY_VERIFY(visualType(goals, "GoalListCard"));
+        QVERIFY(click(visualType(goals, "GoalListCard")));
+        QTRY_VERIFY(goalDetails->isVisible());
+        QCOMPARE(goalDetails->property("selectedGoalId").toInt(), goalId);
+        QCOMPARE(read(goalDetails, "tasks").toList().size(), 1);
+        QCOMPARE(read(goalDetails, "tasks").toList().first().toMap()["plannedDate"].toString(), QString());
+        QVERIFY(click(visualProperty(goalDetails, "text", QString("Edit"))));
+        QTRY_VERIFY(goalEditor->property("opened").toBool());
+        QCOMPARE(goalEditor->property("editingGoalId").toInt(), goalId);
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!goalEditor->property("visible").toBool());
+        QVERIFY(goalDetails->isVisible());
+        QCOMPARE(goalDetails->property("selectedGoalId").toInt(), goalId);
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!goalDetails->isVisible());
+        QVERIFY(selectPage(0));
+        QTRY_COMPARE(window->property("currentPage").toInt(), 0);
+        QVERIFY(findItem(window->contentItem(), "dashboardContent")->isVisible());
+        QVERIFY(!service.busy());
+        QCOMPARE(busyChanges.count(), 0);
         QCOMPARE(warnings.count(), 0);
     }
 

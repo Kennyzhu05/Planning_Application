@@ -25,6 +25,7 @@ Window {
 
     function refreshDate() {
         currentDate = new Date()
+        taskManager.refreshToday()
         var midnight = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1)
         dateTimer.interval = Math.max(1000, midnight.getTime() - currentDate.getTime() + 50)
         dateTimer.restart()
@@ -47,9 +48,9 @@ Window {
     Item {
         id: appShell
         anchors.fill: parent
-        enabled: !taskDetails.visible && !targetModal.visible
+        enabled: !taskDetails.visible && !goalDetails.visible && !targetModal.visible
         // Blur the entire page, including navigation, behind task details.
-        layer.enabled: taskDetails.visible && GraphicsInfo.api !== GraphicsInfo.Software
+        layer.enabled: (taskDetails.visible || goalDetails.visible) && GraphicsInfo.api !== GraphicsInfo.Software
         layer.effect: MultiEffect {
             blurEnabled: true
             blurMax: 32
@@ -65,7 +66,7 @@ Window {
             anchors.bottom: bottomNavigation.top
             anchors.margins: 20
             // Leave a separate row for the floating button so it cannot cover tasks.
-            anchors.bottomMargin: window.currentPage === 0 ? 88 : 20
+            anchors.bottomMargin: window.currentPage === 0 || window.currentPage === 2 ? 88 : 20
 
             ColumnLayout {
                 id: homePage
@@ -273,7 +274,7 @@ Window {
                         anchors.fill: parent
                         clip: true
                         spacing: 10
-                        model: taskManager
+                        model: taskManager.todayTasks
 
                         delegate: SwipeDelegate {
                             id: delegate
@@ -282,7 +283,7 @@ Window {
                             width: listView.width
                             leftPadding: 16
                             rightPadding: 16
-                            implicitHeight: model.subtaskCount > 0 ? 86 : 68
+                            implicitHeight: (model.subtaskCount > 0 ? 86 : 68) + (model.goalId > 0 ? 18 : 0)
                             onClicked: {
                                 if (swipe.position === 0) taskDetails.openForTask(model.taskId)
                             }
@@ -344,6 +345,15 @@ Window {
                                         font.pixelSize: 12
                                     }
                                     Text {
+                                        Layout.fillWidth: true
+                                        visible: model.goalId > 0
+                                        text: "Goal: " + (model.goalName || "")
+                                        textFormat: Text.PlainText
+                                        color: "#A5B4FC"
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
+                                    Text {
                                         visible: model.subtaskCount > 0
                                         text: model.completedSubtaskCount + " of " + model.subtaskCount + " steps completed"
                                         color: "#A5B4FC"
@@ -393,49 +403,19 @@ Window {
 
             }
 
-            Item {
+            CalendarPage {
+                id: calendarPage
                 anchors.fill: parent
-                visible: window.currentPage === 1 || window.currentPage === 2
+                visible: window.currentPage === 1
+                onTaskRequested: function(taskId) { taskDetails.openForTask(taskId) }
+                onGoalRequested: function(goalId) { goalDetails.openForGoal(goalId) }
+                onAddTaskRequested: function(date) { taskModal.openForDate(date) }
+            }
 
-                Text {
-                    text: window.currentPage === 1 ? "Calendar" : "Long-term goal"
-                    color: "#FFFFFF"
-                    font.pixelSize: 24
-                    font.bold: true
-                }
-
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    width: parent.width
-                    spacing: 16
-
-                    NavigationIcon {
-                        iconName: window.currentPage === 1 ? "calendar" : "goal"
-                        tint: "#818CF8"
-                        Layout.preferredWidth: 48
-                        Layout.preferredHeight: 48
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-                    Text {
-                        text: window.currentPage === 1 ? "Your planning calendar" : "Make room for bigger goals"
-                        color: "#FFFFFF"
-                        font.pixelSize: 18
-                        font.bold: true
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                    }
-                    Text {
-                        text: window.currentPage === 1
-                            ? "Calendar scheduling is coming soon. Plan your tasks on the Dashboard for now."
-                            : "Long-term goal planning is coming soon. You can already break down tasks on the Dashboard."
-                        color: "#A1A1AA"
-                        font.pixelSize: 13
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                    }
-                }
+            GoalsPage {
+                anchors.fill: parent
+                visible: window.currentPage === 2
+                onGoalRequested: function(goalId) { goalDetails.openForGoal(goalId) }
             }
 
             ColumnLayout {
@@ -488,10 +468,10 @@ Window {
             width: 56
             height: 56
             padding: 0
-            visible: window.currentPage === 0
-            Accessible.name: "Add new task"
+            visible: window.currentPage === 0 || window.currentPage === 2
+            Accessible.name: window.currentPage === 2 ? "Add long-term goal" : "Add new task"
             ToolTip.visible: hovered
-            ToolTip.text: "Add new task"
+            ToolTip.text: window.currentPage === 2 ? "Add long-term goal" : "Add new task"
             contentItem: Text {
                 text: "+"
                 color: "#FFFFFF"
@@ -505,7 +485,10 @@ Window {
                 border.width: addTaskButton.activeFocus ? 2 : 0
                 border.color: "#C7D2FE"
             }
-            onClicked: taskModal.open()
+            onClicked: {
+                if (window.currentPage === 2) goalForm.openForGoal(0)
+                else taskModal.openForDate(taskManager.todayDate)
+            }
         }
 
         BottomNavigation {
@@ -544,5 +527,21 @@ Window {
 
     TaskDetailsModal {
         id: taskDetails
+        editPopupVisible: taskEdit.visible
+        onEditRequested: function(taskId) { taskEdit.openForTask(taskId) }
+    }
+
+    TaskEditModal { id: taskEdit }
+
+    GoalDetailsModal {
+        id: goalDetails
+        editPopupVisible: goalForm.visible
+        onEditRequested: function(goalId) { goalForm.openForGoal(goalId) }
+        onTaskRequested: function(taskId) { taskDetails.openForTask(taskId) }
+    }
+
+    GoalForm {
+        id: goalForm
+        onGoalSaved: function(goalId) { if (!goalDetails.visible) goalDetails.openForGoal(goalId) }
     }
 }
