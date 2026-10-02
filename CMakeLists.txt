@@ -14,6 +14,7 @@ qt_standard_project_setup(REQUIRES 6.5)
 qt_add_executable(appDailyPlanner
     main.cpp
     taskmanager.h taskmanager.cpp
+    goaloperations.cpp
     aiservice.h aiservice.cpp
     task.h breakdownvalidation.h
 )
@@ -30,6 +31,19 @@ qt_add_qml_module(appDailyPlanner
         TaskDetailsModal.qml
         BottomNavigation.qml
         NavigationIcon.qml
+        DateUtils.js
+        AppButton.qml
+        CalendarWidget.qml
+        DateField.qml
+        TaskListCard.qml
+        CalendarPage.qml
+        GoalListCard.qml
+        GoalsPage.qml
+        PlannerField.qml
+        PlannerArea.qml
+        GoalForm.qml
+        TaskEditModal.qml
+        GoalDetailsModal.qml
 )
 
 # 4. Link C++ backend & Qt framework libraries
@@ -53,14 +67,15 @@ if(DAILYPLANNER_BUILD_TESTS)
     enable_testing()
     find_package(Qt6 REQUIRED COMPONENTS Test)
     qt_add_executable(dailyplanner_tests
-        tests/test_dailyplanner.cpp taskmanager.cpp taskmanager.h task.h
+        tests/test_dailyplanner.cpp taskmanager.cpp goaloperations.cpp taskmanager.h task.h
         aiservice.cpp aiservice.h breakdownvalidation.h)
     target_include_directories(dailyplanner_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(dailyplanner_tests PRIVATE Qt6::Test Qt6::Quick Qt6::QuickControls2 Qt6::Sql Qt6::Network)
     qt_add_qml_module(dailyplanner_tests
         URI DailyPlannerTest VERSION 1.0
         QML_FILES Main.qml TaskModal.qml TargetSetupModal.qml FocusPage.qml TaskDetailsModal.qml
-            BottomNavigation.qml NavigationIcon.qml)
+            BottomNavigation.qml NavigationIcon.qml
+            DateUtils.js AppButton.qml CalendarWidget.qml DateField.qml TaskListCard.qml CalendarPage.qml GoalListCard.qml GoalsPage.qml PlannerField.qml PlannerArea.qml GoalForm.qml TaskEditModal.qml GoalDetailsModal.qml)
     add_test(NAME dailyplanner_tests COMMAND dailyplanner_tests)
     set_tests_properties(dailyplanner_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()

@@ -1,5 +1,6 @@
 #pragma once
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 struct Subtask {
@@ -18,6 +19,9 @@ struct Task {
     QString description;
     bool isCompleted = false;
     QVector<Subtask> subtasks;
+    QString plannedDate;
+    int goalId = 0;
+    int goalPosition = 0;
     int effectiveMinutes() const {
         if (subtasks.isEmpty()) return estimatedMinutes;
         int total = 0;
@@ -29,4 +33,17 @@ struct Task {
         for (const auto &step : subtasks) if (step.isCompleted) ++count;
         return count;
     }
+};
+
+struct Goal {
+    int id = 0;
+    QString name;
+    QString description;
+    QString successCriteria;
+    QString targetDate;
+    QString category = "Personal";
+    QString startingPoint;
+    double weeklyHours = 0;
+    bool isCompleted = false;
+    QStringList milestones;
 };

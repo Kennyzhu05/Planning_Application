@@ -8,6 +8,13 @@ Drawer {
     height: parent ? parent.height * 0.75 : 600
     edge: Qt.BottomEdge
     property string errorMessage: ""
+    property string plannedDate: taskManager.todayDate
+
+    function openForDate(date) {
+        plannedDate = date || taskManager.todayDate
+        errorMessage = ""
+        open()
+    }
 
     // Direct, strongly typed state
     property int selectedMinutes: 30
@@ -206,6 +213,12 @@ Drawer {
             }
         }
 
+        DateField {
+            Layout.fillWidth: true
+            value: drawer.plannedDate
+            onEdited: function(date) { drawer.plannedDate = date }
+        }
+
         Text {
             Layout.fillWidth: true
             visible: drawer.errorMessage.length > 0
@@ -244,7 +257,8 @@ Drawer {
                         String(cleanTitle),
                         Number(drawer.selectedMinutes),
                         String(drawer.selectedCategory),
-                        descriptionInput.text
+                        descriptionInput.text,
+                        drawer.plannedDate
                     )) return
 
                     // Reset input state

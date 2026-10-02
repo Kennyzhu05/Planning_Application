@@ -59,15 +59,27 @@ git push
 
 ## AI task breakdown (private desktop prototype)
 
-Open a dashboard task to view its details and nested subtasks. Click **Break down the task**, edit the suggested titles and durations, then **Save subtasks**. Completing all subtasks completes their parent. The focus budget uses the subtask total instead of double-counting the parent estimate.
+Open a task to view its details and nested subtasks. Click **Break down the task**, edit the suggested titles and durations, then **Save subtasks**. Completing all subtasks completes their parent. The focus budget counts today's scheduled tasks and uses the subtask total instead of double-counting the parent estimate. AI estimates may exceed your original estimate; the preview flags the difference before saving.
 
 The service uses Groq's `openai/gpt-oss-20b` model and strict JSON-schema output. Set `GROQ_API_KEY` in Qt Creator under **Projects > Run Settings > Environment** for the application's desktop run configuration, then restart the app. Enter the key privately; never put it in QML, source code, or Git. The key is read only by the C++ network service.
 
 Each request sends the selected task's title, description, category, and original estimate. There is one request at a time, a 45-second timeout, and cancellation when the card closes. Suggestions are saved only after review. Regenerating requires confirmation before replacing saved subtasks and completion progress.
 
-The existing `planner.db` working-directory location is retained. An additive `subtasks` table preserves existing tasks and settings. Keep the same run working directory to continue using your existing planner database.
+The existing `planner.db` working-directory location is retained. Schema upgrades preserve existing tasks, subtasks, and settings in a transaction. When planned dates are first introduced, existing tasks receive the upgrade day's local date. Unscheduled goal tasks remain unscheduled on later launches. Keep the same run working directory to continue using your existing planner database.
 
-This direct provider connection is for private desktop development. Before distributing the mobile application, put the provider key on an authenticated backend. Timeline scheduling and recursive subtasks are outside this version.
+This direct provider connection is for private desktop development. Before distributing the mobile application, put the provider key on an authenticated backend. Timed events, recurring tasks, automatic scheduling, and recursive subtasks are outside this version.
+
+## Calendar and long-term goals
+
+**Calendar** displays a month above the selected day's tasks and goal deadlines. Browse months, use **Today**, or select a date. Dots mark dates with saved work or deadlines. **+ Task** opens task creation with the selected date. Dashboard shows today's tasks; completing or editing a task updates its shared record in all views. Use **Edit** in a task card to change its title, description, estimate, category, or planned date. Nested subtasks follow their parent's date.
+
+Use the round **+** button on **Long-term goal** to create a goal. Add its title, description, success criteria, and optional target date. **More details** includes category, starting point, and weekly availability; zero hours means unspecified. Goal deadlines appear on Calendar but do not consume the daily Focus Budget.
+
+Open a goal and choose **Break down this goal**. Groq suggests 1–8 ordered milestone titles and 1–12 actionable tasks for the first milestone, each estimated at 1–120 minutes. Review the milestone titles and task titles, guidance, and durations; remove tasks or assign dates before saving. Undated tasks stay in the goal backlog. Scheduled goal tasks appear on Calendar and on Dashboard when scheduled for today. Open a saved goal task to edit its date or use the regular AI subtask breakdown.
+
+**Regenerate goal breakdown** creates a replacement preview. Saving requires confirmation because it replaces that goal's linked tasks, dates, nested subtasks, and completion progress. An unsuccessful save preserves the existing plan. Closing an unsaved preview asks before discarding it; closing during generation cancels the request. Task and goal request identities are distinct, even when their database IDs match.
+
+Goal progress reports completed planned tasks. **Mark goal achieved** is a manual decision based on its success criteria, so finishing the first milestone does not automatically complete the whole goal. Later milestones are stored as a roadmap; expanding later milestones is a future feature.
 
 ### Optional tests
 
