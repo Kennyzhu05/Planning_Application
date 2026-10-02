@@ -14,6 +14,15 @@ Window {
     property int currentPage: 0
     property var currentDate: new Date()
 
+    function formatFocusTime(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600)
+        const minutes = Math.floor((totalSeconds % 3600) / 60)
+        const seconds = totalSeconds % 60
+        const shortTime = ("0" + minutes).slice(-2) + ":"
+                + ("0" + seconds).slice(-2)
+        return hours > 0 ? hours + ":" + shortTime : shortTime
+    }
+
     function refreshDate() {
         currentDate = new Date()
         taskManager.refreshToday()
@@ -39,7 +48,6 @@ Window {
     Item {
         id: appShell
         anchors.fill: parent
-        visible: !focusPage.visible
         enabled: !taskDetails.visible && !goalDetails.visible && !targetModal.visible
         // Blur the entire page, including navigation, behind task details.
         layer.enabled: (taskDetails.visible || goalDetails.visible) && GraphicsInfo.api !== GraphicsInfo.Software
@@ -70,26 +78,90 @@ Window {
                 // =========================================================
                 // 1. HEADER SECTION
                 // =========================================================
-                RowLayout {
+                Item {
+                    id: dashboardHeader
+                    objectName: "dashboardHeader"
                     Layout.fillWidth: true
+                    readonly property bool compact: width < headerLabels.implicitWidth + focusControl.width + 12
+                    implicitHeight: headerLabels.implicitHeight + (compact ? focusControl.height + 8 : 0)
 
                     ColumnLayout {
+                        id: headerLabels
+                        anchors.left: parent.left
+                        anchors.top: parent.top
                         spacing: 2
                         Text {
+                            objectName: "dashboardTitle"
                             text: "Today's Schedule"
                             color: "#FFFFFF"
                             font.pixelSize: 24
                             font.bold: true
                         }
                         Text {
+                            objectName: "dashboardDate"
                             text: Qt.formatDate(window.currentDate, "dddd, MMM d, yyyy")
                             color: "#A1A1AA"
                             font.pixelSize: 13
                         }
                     }
 
-                    Item { Layout.fillWidth: true }
-
+                    Button {
+                        id: focusControl
+                        objectName: "focusControl"
+                        anchors.right: parent.right
+                        y: dashboardHeader.compact ? headerLabels.height + 8 : 0
+                        width: 106
+                        height: 44
+                        padding: 10
+                        text: focusController.running
+                              ? window.formatFocusTime(focusController.timed
+                                    ? focusController.remainingSeconds
+                                    : focusController.elapsedSeconds)
+                              : "Start Focus"
+                        Accessible.name: focusController.running
+                                         ? "End focus session. " + (focusController.timed ? "Time remaining " : "Elapsed time ") + text
+                                         : "Start focus session"
+                        ToolTip.visible: hovered
+                        ToolTip.text: focusController.running
+                                      ? "End focus session"
+                                      : "Choose a focus mode"
+                        contentItem: RowLayout {
+                            spacing: 6
+                            Text {
+                                objectName: "focusControlTime"
+                                text: focusControl.text
+                                color: "#FFFFFF"
+                                font.pixelSize: 12
+                                font.bold: true
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Rectangle {
+                                objectName: "focusStopSquare"
+                                visible: focusController.running
+                                implicitWidth: 10
+                                implicitHeight: 10
+                                color: "#FFFFFF"
+                                radius: 1
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                        }
+                        background: Rectangle {
+                            objectName: "focusControlBackground"
+                            radius: 12
+                            color: focusController.running
+                                   ? (focusControl.down ? "#9A3412" : "#C2410C")
+                                   : (focusControl.down ? "#3730A3" : "#4338CA")
+                            Behavior on color { ColorAnimation { duration: 160 } }
+                        }
+                        onClicked: {
+                            if (focusController.running)
+                                focusController.stop()
+                            else
+                                focusSetupDialog.open()
+                        }
+                    }
                 }
 
                 // =========================================================
@@ -159,29 +231,6 @@ Window {
                             }
                         }
                     }
-                }
-
-                Button {
-                    id: startFocusButton
-                    Layout.fillWidth: true
-                    implicitHeight: 52
-                    text: "Start Focus"
-
-                    contentItem: Text {
-                        text: startFocusButton.text
-                        color: "#FFFFFF"
-                        font.pixelSize: 16
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    background: Rectangle {
-                        color: startFocusButton.down ? "#3730A3" : "#4338CA"
-                        radius: 14
-                    }
-
-                    onClicked: focusPage.visible = true
                 }
 
                 // =========================================================
@@ -472,15 +521,13 @@ Window {
         }
     }
 
-    FocusPage {
-        id: focusPage
-        anchors.fill: parent
-        visible: false
-        onBackRequested: focusPage.visible = false
+    FocusSetupDialog {
+        id: focusSetupDialog
     }
 
     TaskDetailsModal {
         id: taskDetails
+        editPopupVisible: taskEdit.visible
         onEditRequested: function(taskId) { taskEdit.openForTask(taskId) }
     }
 
@@ -488,6 +535,7 @@ Window {
 
     GoalDetailsModal {
         id: goalDetails
+        editPopupVisible: goalForm.visible
         onEditRequested: function(goalId) { goalForm.openForGoal(goalId) }
         onTaskRequested: function(taskId) { taskDetails.openForTask(taskId) }
     }

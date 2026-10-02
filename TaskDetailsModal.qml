@@ -18,6 +18,7 @@ FocusScope {
     property string errorMessage: ""
     property string confirmation: ""
     property int previewRevision: 0
+    property bool editPopupVisible: false
     signal editRequested(int taskId)
     readonly property bool generating: aiService.busy && aiService.activeTaskId === selectedTaskId
     readonly property int suggestedMinutes: {
@@ -102,7 +103,7 @@ FocusScope {
 
     Shortcut {
         sequence: "Escape"
-        enabled: root.visible && !Overlay.overlay.visible
+        enabled: root.visible && !root.editPopupVisible
         context: Qt.WindowShortcut
         onActivated: {
             if (root.confirmation.length) {

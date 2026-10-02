@@ -13,6 +13,7 @@ FocusScope {
     property int selectedGoalId: -1
     property bool hasPreview: false
     property int previewRevision: 0
+    property bool editPopupVisible: false
     property string errorMessage: ""
     property string confirmation: ""
     readonly property var goal: { var revision = taskManager.revision; return taskManager.getGoal(selectedGoalId) }
@@ -94,7 +95,7 @@ FocusScope {
 
     Shortcut {
         sequence: "Escape"
-        enabled: root.visible && !Overlay.overlay.visible
+        enabled: root.visible && !root.editPopupVisible
         context: Qt.WindowShortcut
         onActivated: {
             if (root.confirmation.length) root.confirmation = ""
