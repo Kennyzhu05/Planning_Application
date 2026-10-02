@@ -16,9 +16,11 @@ Window {
         : 0.0
 
     ColumnLayout {
+        id: homePage
         anchors.fill: parent
         anchors.margins: 20
         spacing: 20
+        visible: !focusPage.visible
 
         // =========================================================
         // 1. HEADER SECTION
@@ -122,6 +124,29 @@ Window {
                     }
                 }
             }
+        }
+
+        Button {
+            id: startFocusButton
+            Layout.fillWidth: true
+            implicitHeight: 52
+            text: "Start Focus"
+
+            contentItem: Text {
+                text: startFocusButton.text
+                color: "#FFFFFF"
+                font.pixelSize: 16
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            background: Rectangle {
+                color: startFocusButton.down ? "#3730A3" : "#4338CA"
+                radius: 14
+            }
+
+            onClicked: focusPage.visible = true
         }
 
         // =========================================================
@@ -319,5 +344,12 @@ Window {
             taskManager.setTargetHours(hours)
             targetModal.visible = false
         }
+    }
+
+    FocusPage {
+        id: focusPage
+        anchors.fill: parent
+        visible: false
+        onBackRequested: focusPage.visible = false
     }
 }

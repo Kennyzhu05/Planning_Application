@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 1. Find required Qt6 packages
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Sql)
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Sql Network)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -23,6 +23,7 @@ qt_add_qml_module(appDailyPlanner
     VERSION 1.0
     QML_FILES
         Main.qml
+        FocusPage.qml
         TaskModal.qml
         TargetSetupModal.qml
 )
@@ -33,6 +34,7 @@ target_link_libraries(appDailyPlanner
         Qt6::Quick
         Qt6::QuickControls2
         Qt6::Sql
+        Qt6::Network
 )
 
 # Set application window icon & properties
