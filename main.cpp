@@ -11,10 +11,10 @@ int main(int argc, char *argv[]) {
     // Forces "Basic" style to enable dark-mode QML customization across desktop & mobile
     QQuickStyle::setStyle("Basic");
 
-    QQmlApplicationEngine engine;
-
     TaskManager taskManager;
     AIService aiService;
+    // Context objects must outlive the QML engine.
+    QQmlApplicationEngine engine;
 
     // Register objects into QML context
     engine.rootContext()->setContextProperty("taskManager", &taskManager);

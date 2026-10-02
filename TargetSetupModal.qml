@@ -2,17 +2,39 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Item {
+FocusScope {
     id: root
     anchors.fill: parent
+    z: 200
+    focus: visible
+    property double selectedHours: 8.0
+    readonly property bool editing: taskManager.targetHours > 0
 
     signal targetSelected(double hours)
+
+    function openForTarget(hours) {
+        selectedHours = hours > 0 ? Math.max(1, Math.min(12, hours)) : 8.0
+        visible = true
+        forceActiveFocus()
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: root.visible && root.editing
+        context: Qt.WindowShortcut
+        onActivated: root.visible = false
+    }
 
     // Dark semi-transparent background overlay
     Rectangle {
         anchors.fill: parent
         color: "#000000"
         opacity: 0.85
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        onWheel: function(wheel) { wheel.accepted = true }
     }
 
     // Modal Card Container
@@ -26,7 +48,26 @@ Item {
         border.color: "#27272A"
         border.width: 1
 
-        property double selectedHours: 8.0
+        Button {
+            id: closeButton
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 12
+            width: 32
+            height: 32
+            visible: root.editing
+            z: 1
+            Accessible.name: "Close focus target settings"
+            onClicked: root.visible = false
+            background: Rectangle { color: closeButton.down ? "#3F3F46" : "#27272A"; radius: 16 }
+            contentItem: Text {
+                text: "×"
+                color: "#FFFFFF"
+                font.pixelSize: 20
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
 
         ColumnLayout {
             id: layout
@@ -69,7 +110,7 @@ Item {
                 spacing: 4
 
                 Text {
-                    text: card.selectedHours.toFixed(1)
+                    text: root.selectedHours.toFixed(1)
                     color: "#6366F1"
                     font.pixelSize: 48
                     font.bold: true
@@ -103,7 +144,7 @@ Item {
 
                         contentItem: Text {
                             text: modelData.label
-                            color: card.selectedHours === modelData.val ? "#FFFFFF" : "#A1A1AA"
+                            color: root.selectedHours === modelData.val ? "#FFFFFF" : "#A1A1AA"
                             font.pixelSize: 12
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
@@ -111,12 +152,12 @@ Item {
                         }
 
                         background: Rectangle {
-                            color: card.selectedHours === modelData.val ? "#6366F1" : "#09090B"
+                            color: root.selectedHours === modelData.val ? "#6366F1" : "#09090B"
                             radius: 10
-                            border.color: card.selectedHours === modelData.val ? "#6366F1" : "#27272A"
+                            border.color: root.selectedHours === modelData.val ? "#6366F1" : "#27272A"
                         }
 
-                        onClicked: card.selectedHours = modelData.val
+                        onClicked: root.selectedHours = modelData.val
                     }
                 }
             }
@@ -132,9 +173,9 @@ Item {
                     from: 1.0
                     to: 12.0
                     stepSize: 0.5
-                    value: card.selectedHours
+                    value: root.selectedHours
 
-                    onValueChanged: card.selectedHours = value
+                    onMoved: root.selectedHours = value
                 }
 
                 RowLayout {
@@ -151,7 +192,7 @@ Item {
                 implicitHeight: 52
 
                 contentItem: Text {
-                    text: "Start Planning Day →"
+                    text: root.editing ? "Save Focus Target" : "Start Planning Day →"
                     color: "#FFFFFF"
                     font.pixelSize: 15
                     font.bold: true
@@ -164,7 +205,7 @@ Item {
                     radius: 14
                 }
 
-                onClicked: root.targetSelected(card.selectedHours)
+                onClicked: root.targetSelected(root.selectedHours)
             }
         }
     }
