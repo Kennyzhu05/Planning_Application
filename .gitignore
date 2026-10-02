@@ -77,7 +77,14 @@ CMakeLists.txt.user*
 # Database & runtime storage
 *.db
 *.sqlite
+*.db-wal
+*.db-shm
+*.db-journal
+.env
+.env.*
+!.env.example
 
 # IDE artifacts
 .vscode/
 .idea/
+.qtcreator/

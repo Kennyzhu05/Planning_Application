@@ -7,6 +7,7 @@ Drawer {
     width: parent ? parent.width : 390
     height: parent ? parent.height * 0.75 : 600
     edge: Qt.BottomEdge
+    property string errorMessage: ""
 
     // Direct, strongly typed state
     property int selectedMinutes: 30
@@ -19,10 +20,16 @@ Drawer {
         border.width: 1
     }
 
-    ColumnLayout {
+    ScrollView {
+        id: taskScroll
         anchors.fill: parent
         anchors.margins: 24
-        spacing: 20
+        contentWidth: availableWidth
+        clip: true
+
+    ColumnLayout {
+        width: taskScroll.availableWidth
+        spacing: 16
 
         // Grab Handle
         Rectangle {
@@ -69,6 +76,24 @@ Drawer {
                     border.color: taskNameInput.activeFocus ? "#6366F1" : "#3F3F46"
                     border.width: 1
                 }
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            Text { text: "DESCRIPTION (OPTIONAL)"; color: "#A1A1AA"; font.pixelSize: 11; font.bold: true }
+            TextArea {
+                id: descriptionInput
+                Layout.fillWidth: true
+                implicitHeight: 88
+                placeholderText: "Add context to help plan useful steps."
+                placeholderTextColor: "#71717A"
+                color: "#FFFFFF"
+                wrapMode: TextEdit.Wrap
+                selectByMouse: true
+                padding: 12
+                background: Rectangle { color: "#27272A"; radius: 12; border.color: "#3F3F46" }
             }
         }
 
@@ -181,7 +206,13 @@ Drawer {
             }
         }
 
-        Item { Layout.fillHeight: true }
+        Text {
+            Layout.fillWidth: true
+            visible: drawer.errorMessage.length > 0
+            text: drawer.errorMessage
+            color: "#FCA5A5"
+            wrapMode: Text.Wrap
+        }
 
         // 4. Save Task Button
         Button {
@@ -208,19 +239,30 @@ Drawer {
                 var cleanTitle = taskNameInput.text.trim()
                 if (cleanTitle.length > 0) {
                     // SAFE INVOCATION: Strictly cast types to match C++ signature
-                    taskManager.addTask(
+                    drawer.errorMessage = ""
+                    if (!taskManager.addTask(
                         String(cleanTitle),
                         Number(drawer.selectedMinutes),
-                        String(drawer.selectedCategory)
-                    )
+                        String(drawer.selectedCategory),
+                        descriptionInput.text
+                    )) return
 
                     // Reset input state
                     taskNameInput.text = ""
+                    descriptionInput.text = ""
                     drawer.selectedMinutes = 30
                     drawer.selectedCategory = "Work"
                     drawer.close()
                 }
             }
+        }
+    }
+    }
+
+    Connections {
+        target: taskManager
+        function onErrorOccurred(message) {
+            if (drawer.visible) drawer.errorMessage = message
         }
     }
 }
