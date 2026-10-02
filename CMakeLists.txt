@@ -15,6 +15,8 @@ qt_add_executable(appDailyPlanner
     main.cpp
     taskmanager.h taskmanager.cpp
     aiservice.h aiservice.cpp
+    focusengine.h focusengine.cpp
+    focuscontroller.h focuscontroller.cpp
 )
 
 # 3. Register QML Module and QML UI files
@@ -43,3 +45,24 @@ set_target_properties(appDailyPlanner PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+include(CTest)
+
+if(BUILD_TESTING AND NOT ANDROID)
+    add_executable(focusengine_tests
+        tests/focusengine_test.cpp
+        focusengine.h
+        focusengine.cpp
+    )
+
+    target_include_directories(focusengine_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+
+    set_target_properties(focusengine_tests PROPERTIES
+        AUTOMOC OFF
+        AUTOUIC OFF
+        AUTORCC OFF
+    )
+
+    add_test(NAME FocusEngineRules COMMAND focusengine_tests)
+endif()
