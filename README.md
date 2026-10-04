@@ -7,10 +7,50 @@ A modern, high-performance C++20 and Qt Quick (QML) daily planning desktop and m
 
 * **Visual Time Budgeting:** Treats focus time as a finite budget rather than an infinite checklist. Features a dynamic capacity bar that smoothly transitions from **Indigo (`#6366F1`)** to **Amber (`#F59E0B`)** when scheduled tasks exceed daily target hours.
 * **One-Tap Task Creation:** Ergonomic duration preset chips (`15m`, `30m`, `45m`, `1h`, `2h`) and category tags for rapid, frictionless input.
-* **Active Focus Mode:** Integrated Pomodoro-style countdown timer with custom-rendered canvas progress ring.
+* **Active Focus Mode:** Timed or open-ended Android focus monitoring, with screen-use reminders at one and five minutes and a matching in-app warning. Desktop retains simulated screen monitoring.
 * **SQLite Persistence:** Native C++ model (`TaskManager` deriving from `QAbstractListModel`) providing fast SQLite data storage and instant state synchronization.
+* **Calendar month/year picker:** Click the month heading to choose a month and year (1900–9999), then select a day to view its tasks and goal deadlines. Browsing months does not change the selected day until a day is clicked.
+* **Editable breakdowns:** Task and goal AI previews support titles, guidance, durations, adding/removing steps, and moving steps up/down. Task cards also offer **Edit subtasks** and **Create subtasks manually**, with Save/Cancel and discard confirmation. Ordinary edits preserve retained subtask IDs and completion; new steps start incomplete. AI regeneration remains an explicit replacement that resets progress after confirmation. Keep 1–12 steps with 1–120 minutes each. All accepted edits are transactional and refresh the parent, focus budget, and progress displays.
+* **Auto task configure placeholder:** A dashboard button between Focus Budget and the task list opens a **Coming soon** message. It does not schedule tasks or make an AI request.
+* **Consistent forms:** Task creation/editing and goal creation/editing share `qml/components/FormDrawer.qml`, with a fixed header/footer and scrolling fields. `CategorySelector.qml` displays all category choices as readable chips. The floating add button overlays the lists, with trailing scroll space instead of a reserved full-width row. Goal deadline selection displays **Select a deadline** until a date is chosen; **No deadline** is the separate clear action.
+
+The calendar/editor interface update requires reconfiguring CMake and rebuilding the Qt app because new QML components are registered in the module. No Cloudflare redeployment is required. No build, automated tests, or live AI requests were run for this interface update; runtime and visual checks are left to the user.
 
 ---
+
+## Project folders
+
+```text
+DailyPlanner/
+  CMakeLists.txt          Build entry point (open this in Qt Creator)
+  README.md              Project setup and feature notes
+  cmake/                 Public configuration header template
+  src/
+    main.cpp             Application entry point
+    models/              Tasks, goals, SQLite storage, breakdown validation
+    services/            AI backend client and account authentication
+    focus/               Focus timer engine and controller
+  qml/
+    Main.qml             Application shell and dashboard
+    pages/               Calendar, goals, and legacy focus screen
+    dialogs/             Task/goal editors, sign-in, and focus setup
+    components/          Reusable controls, calendar, cards, and step editor
+    utils/               Shared date helpers
+  backend/               Cloudflare Worker source, settings, and deployment guide
+  android/               Native focus service, private IPC, manifest, and notifications
+  tests/                 Existing C++ test sources
+  importedcontent/       Reserved for imported design files
+  build/                 Generated build files (ignored by Git)
+```
+
+After the folder reorganization, open the root `CMakeLists.txt` and run CMake
+again in your existing build configuration before rebuilding. Keep your current
+run environment and working directory so the same local `planner.db` is used.
+QML resource aliases preserve the existing module entry point and relative
+JavaScript imports; source files remain grouped in the folders above. Both
+application and optional test targets use the updated source/include paths.
+The Groq/Cloudflare backend configuration is unchanged and needs no redeployment.
+No builds or tests were run for this source-file reorganization.
 
 ## Technical Stack
 
@@ -72,6 +112,20 @@ Each request sends the selected task's title, description, category, and origina
 The existing `planner.db` working-directory location is retained. Schema upgrades preserve existing tasks, subtasks, and settings in a transaction. When planned dates are first introduced, existing tasks receive the upgrade day's local date. Unscheduled goal tasks remain unscheduled on later launches. Keep the same run working directory to continue using your existing planner database.
 
 The backend authenticates requests, validates input/output, enforces per-account limits and shared daily/monthly request caps, and returns readable errors. The trial uses an explicit account allowlist. Sign-in controls AI access; changing accounts does not create a separate local planner or synchronize data. Timed events, recurring tasks, automatic scheduling, and recursive subtasks are outside this version.
+
+## Android focus sessions
+
+Focus supports timed and open-ended sessions on Android. During an active session,
+an awake screen for one continuous minute triggers a gentle notification; five
+minutes triggers a stronger warning that repeats every further five minutes.
+Reminders work in other apps, with a matching banner inside DailyPlanner. Screen-off
+clears warnings and resets the screen-use streak while overall focus time continues.
+The native foreground service owns session state; desktop keeps its simulation.
+
+Reconfigure CMake, rebuild the Android APK, and allow notifications on the phone.
+No Cloudflare deployment is needed. See [Android focus setup and implementation](android/README.md)
+for permissions, background/battery settings, changed files, platform limitations,
+and manual checks. No build or phone tests were run for this change.
 
 ## Calendar and long-term goals
 
