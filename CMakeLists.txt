@@ -77,6 +77,13 @@ set(DAILYPLANNER_QML_FILES
     qml/utils/DateUtils.js
 )
 
+# Use native safe-area insets when supported, retaining the Qt 6.5 fallback.
+if(Qt6_VERSION VERSION_GREATER_EQUAL 6.9)
+    list(APPEND DAILYPLANNER_QML_FILES qml/components/PageInsets.qml)
+else()
+    list(APPEND DAILYPLANNER_QML_FILES qml/compat/PageInsets.qml)
+endif()
+
 # Physical folders organize the sources; resource aliases keep the existing
 # module URLs, component names, and relative DateUtils.js imports unchanged.
 # Set these before adding either QML module (including the optional test one).

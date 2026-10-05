@@ -14,6 +14,8 @@ class TaskManager : public QAbstractListModel {
     Q_PROPERTY(int revision READ revision NOTIFY plannerChanged)
     Q_PROPERTY(QString todayDate READ todayDate NOTIFY plannerChanged)
     Q_PROPERTY(QAbstractItemModel *todayTasks READ todayTasks CONSTANT)
+    Q_PROPERTY(QString rolloverMessage READ rolloverMessage NOTIFY rolloverNoticeChanged)
+    Q_PROPERTY(bool rolloverFailed READ rolloverFailed NOTIFY rolloverNoticeChanged)
 public:
     enum TaskRoles {
         IdRole = Qt::UserRole + 1, NameRole, CategoryRole, MinutesRole,
@@ -39,6 +41,7 @@ public:
     Q_INVOKABLE bool toggleGoal(int goalId);
     Q_INVOKABLE bool saveGoalBreakdown(int goalId, const QVariantList &milestones, const QVariantList &steps);
     Q_INVOKABLE void refreshToday();
+    Q_INVOKABLE void dismissRolloverMessage();
     Q_INVOKABLE void toggleTask(int index);
     Q_INVOKABLE void deleteTask(int index);
     Q_INVOKABLE bool deleteTaskById(int taskId);
@@ -54,7 +57,10 @@ public:
     int revision() const { return m_revision; }
     QString todayDate() const { return m_today.toString(Qt::ISODate); }
     QAbstractItemModel *todayTasks() const { return m_todayTasks; }
+    QString rolloverMessage() const { return m_rolloverMessage; }
+    bool rolloverFailed() const { return m_rolloverFailed; }
 signals:
+    void rolloverNoticeChanged();
     void plannerChanged();
     void goalChanged(int goalId);
     void totalPlannedHoursChanged();
@@ -72,9 +78,15 @@ private:
     void notifyTask(int row);
     bool fail(const QString &message);
     void recalculatePlannedHours();
+    bool rolloverOverdueTasks(QVector<int> &changedTaskIds);
+    void setRolloverNotice(const QString &message, bool failed = false);
     QVector<Task> m_tasks;
     QVector<Goal> m_goals;
     QDate m_today = QDate::currentDate();
+    QDate m_lastRolloverDate;
+    QString m_rolloverMessage;
+    bool m_rolloverFailed = false;
+    bool m_databaseReady = false;
     int m_revision = 0;
     QSortFilterProxyModel *m_todayTasks = nullptr;
     double m_targetHours = 0.0;

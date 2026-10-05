@@ -2,6 +2,7 @@
 #include "breakdownvalidation.h"
 #include <QJsonDocument>
 #include <QSqlQuery>
+#include <QSqlError>
 #include <algorithm>
 #include <cmath>
 
@@ -17,10 +18,104 @@ void TaskManager::publishChange() {
 }
 
 void TaskManager::refreshToday() {
-    if (m_today == QDate::currentDate()) return;
-    m_today = QDate::currentDate();
+    const QDate currentDate = QDate::currentDate();
+    const bool dateChanged = m_today != currentDate;
+    m_today = currentDate;
+    if (dateChanged) setRolloverNotice(QString());
+
+    // Retry failures on resume/Retry even if the local date hasn't changed.
+    QVector<int> changedTaskIds;
+    if (m_databaseReady) rolloverOverdueTasks(changedTaskIds);
+    if (!dateChanged && changedTaskIds.isEmpty()) return;
+
     recalculatePlannedHours();
+    for (int taskId : changedTaskIds) {
+        const int row = findRow(taskId);
+        if (row >= 0) emit dataChanged(index(row), index(row), {PlannedDateRole});
+    }
     publishChange();
+    for (int taskId : changedTaskIds) emit taskChanged(taskId);
+}
+
+void TaskManager::setRolloverNotice(const QString &message, bool failed) {
+    if (m_rolloverMessage == message && m_rolloverFailed == failed) return;
+    m_rolloverMessage = message;
+    m_rolloverFailed = failed;
+    emit rolloverNoticeChanged();
+}
+
+void TaskManager::dismissRolloverMessage() {
+    setRolloverNotice(QString());
+}
+
+bool TaskManager::rolloverOverdueTasks(QVector<int> &changedTaskIds) {
+    if (m_lastRolloverDate == m_today) return true;
+    const QString today = todayDate();
+    const QString failureMessage = QStringLiteral(
+        "Could not move unfinished tasks to today. Their previous dates are unchanged. Tap Retry or reopen the app.");
+    auto reportFailure = [this, &failureMessage]() {
+        setRolloverNotice(failureMessage, true);
+        return fail(failureMessage);
+    };
+    if (!m_db.transaction()) return reportFailure();
+    auto rollback = [this, &reportFailure]() {
+        m_db.rollback();
+        return reportFailure();
+    };
+
+    QSqlQuery marker(m_db);
+    if (!marker.exec("SELECT value FROM settings WHERE key = 'lastTaskRolloverDate'"))
+        return rollback();
+    const bool alreadyRolled = marker.next() && marker.value(0).toString() == today;
+    if (marker.lastError().isValid()) return rollback();
+    marker.finish();
+    if (alreadyRolled) {
+        if (!m_db.commit()) return rollback();
+        m_lastRolloverDate = m_today;
+        if (m_rolloverFailed) setRolloverNotice(QString());
+        return true;
+    }
+
+    // Read IDs in the transaction; NULL completion means unfinished in legacy
+    // records, matching toBool(). Skip empty and malformed planned dates.
+    QVector<int> movedTaskIds;
+    QSqlQuery candidates(m_db);
+    candidates.prepare("SELECT id, planned_date FROM tasks "
+                       "WHERE COALESCE(completed, 0) = 0 AND planned_date < ?");
+    candidates.addBindValue(today);
+    if (!candidates.exec()) return rollback();
+    while (candidates.next()) {
+        const QString date = candidates.value(1).toString();
+        if (validDate(date, false)) movedTaskIds.append(candidates.value(0).toInt());
+    }
+    if (candidates.lastError().isValid()) return rollback();
+    candidates.finish();
+
+    QSqlQuery update(m_db);
+    if (!update.prepare("UPDATE tasks SET planned_date = ? "
+                        "WHERE id = ? AND COALESCE(completed, 0) = 0")) return rollback();
+    for (int taskId : movedTaskIds) {
+        update.bindValue(0, today);
+        update.bindValue(1, taskId);
+        if (!update.exec() || update.numRowsAffected() != 1) return rollback();
+    }
+    if (!marker.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('lastTaskRolloverDate', ?)"))
+        return rollback();
+    marker.addBindValue(today);
+    if (!marker.exec() || !m_db.commit()) return rollback();
+
+    // Change the model only after every date and the daily marker are committed.
+    m_lastRolloverDate = m_today;
+    for (int taskId : movedTaskIds) {
+        const int row = findRow(taskId);
+        if (row >= 0) m_tasks[row].plannedDate = today;
+    }
+    changedTaskIds = movedTaskIds;
+    if (movedTaskIds.isEmpty()) setRolloverNotice(QString());
+    else setRolloverNotice(movedTaskIds.size() == 1
+        ? QStringLiteral("1 unfinished task moved to today.")
+        : QStringLiteral("%1 unfinished tasks moved to today.").arg(movedTaskIds.size()));
+    return true;
 }
 
 int TaskManager::findGoal(int goalId) const {

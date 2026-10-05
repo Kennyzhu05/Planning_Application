@@ -5,6 +5,7 @@ import QtQuick.Layouts
 FormDrawer {
     id: root
     property int taskId: 0
+    property string loadedPlannedDate: ""
     heading: "Edit task"
     subtitle: "Fine-tune the details and decide when to work on it."
     saveText: "Save changes"
@@ -19,7 +20,8 @@ FormDrawer {
         minutesInput.value = task.minutes
         categoryInput.value = task.category
         plannedDate.allowEmpty = task.goalId > 0
-        plannedDate.value = task.plannedDate || ""
+        loadedPlannedDate = task.plannedDate || ""
+        plannedDate.value = loadedPlannedDate
         errorMessage = ""
         open()
     }
@@ -51,6 +53,15 @@ FormDrawer {
     }
     Connections {
         target: taskManager
+        function onTaskChanged(id) {
+            if (!root.visible || id !== root.taskId) return
+            var task = taskManager.getTask(id)
+            // Follow rollover only if the date field is untouched; keep the
+            // other draft inputs and any date the user explicitly selected.
+            if (plannedDate.value === root.loadedPlannedDate)
+                plannedDate.value = task.plannedDate || ""
+            root.loadedPlannedDate = task.plannedDate || ""
+        }
         function onErrorOccurred(message) { if (root.visible) root.errorMessage = message }
     }
 }

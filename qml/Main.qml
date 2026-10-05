@@ -14,6 +14,11 @@ Window {
     property int currentPage: 0
     property var currentDate: new Date()
 
+    PageInsets {
+        id: pageInsets
+        anchors.fill: parent
+    }
+
     function formatFocusTime(totalSeconds) {
         const hours = Math.floor(totalSeconds / 3600)
         const minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -51,6 +56,9 @@ Window {
     Item {
         id: appShell
         anchors.fill: parent
+        // Shared by Dashboard, Calendar, Long-term goal, Menu, and focus banners.
+        anchors.topMargin: pageInsets.topInset
+                           + (Qt.platform.os === "android" || Qt.platform.os === "ios" ? 8 : 0)
         enabled: !taskDetails.visible && !goalDetails.visible && !targetModal.visible
         // Blur the entire page, including navigation, behind task details.
         layer.enabled: (taskDetails.visible || goalDetails.visible) && GraphicsInfo.api !== GraphicsInfo.Software
@@ -212,6 +220,59 @@ Window {
                 // =========================================================
                 // 2. CAPACITY PROGRESS CARD
                 // =========================================================
+                Rectangle {
+                    id: rolloverNotice
+                    objectName: "rolloverNotice"
+                    Layout.fillWidth: true
+                    visible: taskManager.rolloverMessage.length > 0
+                    implicitHeight: rolloverNoticeContent.implicitHeight + 24
+                    color: taskManager.rolloverFailed ? "#3B1B24" : "#1D2932"
+                    border.color: taskManager.rolloverFailed ? "#F87171" : "#3B5962"
+                    radius: 14
+                    RowLayout {
+                        id: rolloverNoticeContent
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 8
+                        Text {
+                            Layout.fillWidth: true
+                            text: taskManager.rolloverMessage
+                            color: taskManager.rolloverFailed ? "#FCA5A5" : "#BAE6D5"
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                            textFormat: Text.PlainText
+                            Accessible.role: Accessible.AlertMessage
+                            Accessible.name: text
+                        }
+                        AppButton {
+                            visible: taskManager.rolloverFailed
+                            text: "Retry"
+                            implicitHeight: 36
+                            onClicked: taskManager.refreshToday()
+                        }
+                        Button {
+                            id: dismissRollover
+                            implicitWidth: 32
+                            implicitHeight: 36
+                            padding: 0
+                            Accessible.name: "Dismiss task rollover message"
+                            onClicked: taskManager.dismissRolloverMessage()
+                            contentItem: Text {
+                                text: "×"
+                                font.pixelSize: 22
+                                color: "#CBD5E1"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            background: Rectangle {
+                                color: dismissRollover.down ? "#334155" : "transparent"
+                                radius: 8
+                                border.color: dismissRollover.activeFocus ? "#A5B4FC" : "transparent"
+                            }
+                        }
+                    }
+                }
+
                 Button {
                     id: focusBudgetButton
                     objectName: "focusBudgetButton"

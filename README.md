@@ -129,6 +129,23 @@ and manual checks. No build or phone tests were run for this change.
 
 ## Calendar and long-term goals
 
+Unfinished tasks with valid planned dates before today automatically move to today,
+including scheduled tasks linked to goals. Completed/future tasks, undated goal
+backlog tasks, and goal deadlines retain their dates. Existing task IDs and subtask
+progress are preserved; only the parent task's planned date changes. Dashboard,
+Calendar, open task details, and the Focus Budget refresh together. An open task
+editor follows a changed date only when its date field is untouched.
+
+Rollover checks use the device's local date at startup, midnight while running,
+and when the app returns from the background. Date updates and the last successful
+rollover date in `settings` are committed together, once per local day; opening
+after several days catches up all overdue unfinished work. Tasks deliberately
+backdated after that day's successful check stay there until the next day's check.
+A dismissible dashboard message reports the number moved. Failed saves preserve
+the previous dates and daily marker, show a Retry action, and retry on reopening or
+resume. This runs locally, without AI/backend calls or schema changes. No builds
+or tests were run for this rollover change, as requested.
+
 **Calendar** displays a month above the selected day's tasks and goal deadlines. Browse months, use **Today**, or select a date. Dots mark dates with saved work or deadlines. **+ Task** opens task creation with the selected date. Dashboard shows today's tasks; completing or editing a task updates its shared record in all views. Use **Edit** in a task card to change its title, description, estimate, category, or planned date. Nested subtasks follow their parent's date.
 
 Use the round **+** button on **Long-term goal** to create a goal. Add its title, description, success criteria, and optional target date. **More details** includes category, starting point, and weekly availability; zero hours means unspecified. Goal deadlines appear on Calendar but do not consume the daily Focus Budget.

@@ -95,7 +95,7 @@ ColumnLayout {
         AppButton { text: "‹"; Accessible.name: "Previous month"; fillColor: "#27272A"; onClicked: root.changeMonth(-1) }
         AppButton {
             Layout.fillWidth: true
-            text: Qt.formatDate(root.displayedMonth, "MMMM yyyy") + "  ▾"
+            text: Qt.formatDate(root.displayedMonth, "MMMM yyyy")
             fillColor: "#252230"
             Accessible.name: "Choose calendar month and year. " + Qt.formatDate(root.displayedMonth, "MMMM yyyy")
             onClicked: monthPicker.open()

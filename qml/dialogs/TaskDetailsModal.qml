@@ -47,7 +47,8 @@ FocusScope {
         savedModel.clear()
         var steps = taskManager.getSubtasks(selectedTaskId)
         for (var i = 0; i < steps.length; ++i) savedModel.append(steps[i])
-        if (visible) forceActiveFocus()
+        // Background rollover can refresh details while a draft/editor has focus.
+        if (visible && !hasPreview && !editPopupVisible) forceActiveFocus()
     }
     function openForTask(taskId) {
         // Switching programmatically must also respect an unsaved preview.

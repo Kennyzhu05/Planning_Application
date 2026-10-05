@@ -10,7 +10,8 @@
 #include <cmath>
 
 TaskManager::TaskManager(QObject *parent, const QString &databasePath) : QAbstractListModel(parent) {
-    if (initDatabase(databasePath)) loadTasksFromDb();
+    m_databaseReady = initDatabase(databasePath);
+    if (m_databaseReady) loadTasksFromDb();
     m_todayTasks = new QSortFilterProxyModel(this);
     m_todayTasks->setSourceModel(this);
     m_todayTasks->setFilterRole(PlannedDateRole);
@@ -18,6 +19,8 @@ TaskManager::TaskManager(QObject *parent, const QString &databasePath) : QAbstra
     connect(this, &TaskManager::plannerChanged, m_todayTasks, [this]() {
         m_todayTasks->setFilterFixedString(todayDate());
     });
+    // Catch up after model/proxy creation. QML can read the startup notice later.
+    refreshToday();
 }
 
 TaskManager::~TaskManager() {
